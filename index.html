@@ -6,66 +6,44 @@
 
 <style>
 body {
+  margin: 0;
   font-family: Arial, sans-serif;
   background: #0f172a;
   color: #e5e7eb;
-  display: flex;
-  justify-content: center;
-  padding: 30px;
 }
 
 .container {
-  width: 900px;
+  max-width: 1100px;
+  margin: 60px auto;
   background: #020617;
-  border-radius: 12px;
-  padding: 20px;
+  padding: 30px;
+  border-radius: 16px;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.5);
 }
 
-h1 { text-align: center; }
-
-.tabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  justify-content: center;
-  margin-bottom: 10px;
+h1 {
+  text-align: center;
+  margin-bottom: 20px;
 }
-
-.tab {
-  background: #1e293b;
-  border: none;
-  padding: 6px 12px;
-  border-radius: 6px;
-  color: white;
-  cursor: pointer;
-  font-size: 13px;
-}
-
-.tab.active { background: #2563eb; }
 
 .controls {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 6px;
-  font-size: 13px;
-  gap: 10px;
+  margin-bottom: 15px;
 }
 
 button {
   background: #2563eb;
   border: none;
-  padding: 6px 12px;
-  border-radius: 6px;
   color: white;
+  padding: 8px 14px;
+  border-radius: 8px;
   cursor: pointer;
 }
 
-input {
-  padding: 6px;
-  border-radius: 6px;
-  border: none;
-  width: 90px;
+button:hover {
+  background: #1d4ed8;
 }
 
 table {
@@ -74,189 +52,96 @@ table {
 }
 
 th, td {
-  padding: 8px;
-  border-bottom: 1px solid #334155;
+  padding: 10px;
+  border-bottom: 1px solid #1e293b;
+  text-align: left;
 }
 
-th { cursor: pointer; }
+th {
+  color: #93c5fd;
+}
 
-tr:hover { background: #1e293b; }
-
-.ping-low { color: #22c55e; }
-.ping-mid { color: #eab308; }
-.ping-high { color: #ef4444; }
+.counts {
+  margin-bottom: 10px;
+  font-size: 14px;
+  color: #cbd5f5;
+}
 
 .footer {
-  text-align: center;
+  margin-top: 10px;
   font-size: 12px;
-  opacity: 0.7;
-  margin-top: 8px;
+  text-align: center;
+  color: #64748b;
 }
 </style>
 </head>
 
 <body>
 <div class="container">
-<h1>Players Online</h1>
+  <h1>Players Online</h1>
 
-<div class="tabs">
-  <button class="tab active" onclick="setFilter('ALL', this)">All</button>
-  <button class="tab" onclick="setFilter('P', this)">Police</button>
-  <button class="tab" onclick="setFilter('R', this)">Border</button>
-  <button class="tab" onclick="setFilter('H', this)">Emergency</button>
-  <button class="tab" onclick="setFilter('E', this)">EMS</button>
-  <button class="tab" onclick="setFilter('G', this)">Mechanic</button>
-  <button class="tab" onclick="setFilter('ADMIN', this)">Admins</button>
-</div>
-
-<div class="controls">
-  <div id="counts">Players: 0</div>
-
-  <div style="display:flex; gap:6px; align-items:center;">
-    <input type="number" id="searchId" placeholder="Enter ID">
-    <button onclick="findById()">🔍 Find</button>
+  <div class="controls">
+    <div class="counts" id="counts">
+      Players: 0 | Police: 0 | Border: 0 | Emergency: 0 | EMS: 0 | Mechanic: 0 | Admins: 0
+    </div>
+    <button onclick="loadPlayers()">🔄 Refresh</button>
   </div>
 
-  <button onclick="loadPlayers()">🔄 Refresh</button>
-</div>
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Name</th>
+        <th>Ping</th>
+      </tr>
+    </thead>
+    <tbody id="playerTable">
+    </tbody>
+  </table>
 
-<div id="searchResult" style="margin-bottom:10px; font-size:13px;"></div>
-
-<table>
-<thead>
-<tr>
-  <th onclick="sortBy('id')">ID ⬍</th>
-  <th onclick="sortBy('name')">Name ⬍</th>
-  <th>Ping</th>
-</tr>
-</thead>
-<tbody id="players"></tbody>
-</table>
-
-<div class="footer">Auto refresh every 1 minute</div>
+  <div class="footer">Auto refresh every 1 minute</div>
 </div>
 
 <script>
-let playersData = [];
-let currentSort = { key: null, asc: true };
-let currentFilter = "ALL";
-let lastHash = "";
-
-const jobRegex = {
-  P: /P-\d+/i,
-  R: /R-\d+/i,
-  H: /H-\d+/i,
-  E: /E-\d+/i,
-  G: /G-\d+/i,
-  ADMIN: /[MFAS]-\d+/i
-};
-
 async function loadPlayers() {
-  const res = await fetch("/api/players");
-  const data = await res.json();
+  try {
+    const res = await fetch("/api/players");
+    const players = await res.json();
 
-  const hash = JSON.stringify(data.map(p => [p.id, p.name, p.ping]));
-  if (hash === lastHash) return;
+    const table = document.getElementById("playerTable");
+    table.innerHTML = "";
 
-  lastHash = hash;
-  playersData = data;
-  applyFilterAndSort();
-}
+    let police = 0, border = 0, emergency = 0, ems = 0, mechanic = 0, admins = 0;
 
-function setFilter(filter, btn) {
-  currentFilter = filter;
-  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
-  btn.classList.add("active");
-  applyFilterAndSort();
-}
+    players.forEach(p => {
+      const name = p.name || "";
 
-function sortBy(key) {
-  currentSort.asc = currentSort.key === key ? !currentSort.asc : true;
-  currentSort.key = key;
-  applyFilterAndSort();
-}
+      if (/police/i.test(name)) police++;
+      if (/border/i.test(name)) border++;
+      if (/emergency/i.test(name)) emergency++;
+      if (/ems/i.test(name)) ems++;
+      if (/mech|mechanic/i.test(name)) mechanic++;
+      if (/admin/i.test(name)) admins++;
 
-function applyFilterAndSort() {
-  let data = [...playersData];
-
-  updateCounts(playersData);
-
-  if (currentFilter !== "ALL") {
-    data = data.filter(p => jobRegex[currentFilter]?.test(p.name));
-  }
-
-  if (currentSort.key === "id") {
-    data.sort((a, b) => currentSort.asc ? a.id - b.id : b.id - a.id);
-  }
-
-  if (currentSort.key === "name") {
-    data.sort((a, b) =>
-      currentSort.asc
-        ? a.name.localeCompare(b.name)
-        : b.name.localeCompare(a.name)
-    );
-  }
-
-  renderTable(data);
-}
-
-function updateCounts(data) {
-  const count = {
-    ALL: data.length,
-    P: data.filter(p => jobRegex.P.test(p.name)).length,
-    R: data.filter(p => jobRegex.R.test(p.name)).length,
-    H: data.filter(p => jobRegex.H.test(p.name)).length,
-    E: data.filter(p => jobRegex.E.test(p.name)).length,
-    G: data.filter(p => jobRegex.G.test(p.name)).length,
-    ADMIN: data.filter(p => jobRegex.ADMIN.test(p.name)).length
-  };
-
-  document.getElementById("counts").innerText =
-    `Players: ${count.ALL} | Police: ${count.P} | Border: ${count.R} | Emergency: ${count.H} | EMS: ${count.E} | Mechanic: ${count.G} | Admins: ${count.ADMIN}`;
-}
-
-function renderTable(players) {
-  const tbody = document.getElementById("players");
-
-  let html = "";
-  for (const p of players) {
-    const pingClass =
-      p.ping < 80 ? "ping-low" :
-      p.ping < 130 ? "ping-mid" :
-      "ping-high";
-
-    html += `
-      <tr>
+      const row = document.createElement("tr");
+      row.innerHTML = `
         <td>${p.id}</td>
-        <td>${p.name}</td>
-        <td class="${pingClass}">${p.ping}</td>
-      </tr>
-    `;
-  }
+        <td>${name}</td>
+        <td>${p.ping}</td>
+      `;
+      table.appendChild(row);
+    });
 
-  tbody.innerHTML = html;
-}
+    document.getElementById("counts").innerText =
+      `Players: ${players.length} | Police: ${police} | Border: ${border} | Emergency: ${emergency} | EMS: ${ems} | Mechanic: ${mechanic} | Admins: ${admins}`;
 
-function findById() {
-  const id = parseInt(document.getElementById("searchId").value);
-  const result = document.getElementById("searchResult");
-
-  if (isNaN(id)) {
-    result.innerHTML = "⚠️ Please enter a valid ID";
-    return;
-  }
-
-  const player = playersData.find(p => p.id === id);
-
-  if (player) {
-    result.innerHTML = `✅ <b>ID ${player.id}</b> → ${player.name}`;
-  } else {
-    result.innerHTML = `❌ No player found with ID ${id}`;
+  } catch (e) {
+    console.error("Failed to load players");
   }
 }
 
 loadPlayers();
-setInterval(loadPlayers, 60000); // 1 minute
+setInterval(loadPlayers, 60000);
 </script>
 </body>
 </html>
