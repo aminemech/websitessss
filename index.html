@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Players Online</title>
+
+<style>
+body {
+  font-family: Arial, sans-serif;
+  background: #0f172a;
+  color: #e5e7eb;
+  display: flex;
+  justify-content: center;
+  padding: 30px;
+}
+
+.container {
+  width: 900px;
+  background: #020617;
+  border-radius: 12px;
+  padding: 20px;
+}
+
+h1 { text-align: center; }
+
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+  margin-bottom: 10px;
+}
+
+.tab {
+  background: #1e293b;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  color: white;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.tab.active { background: #2563eb; }
+
+.controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+  font-size: 13px;
+  gap: 10px;
+}
+
+button {
+  background: #2563eb;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  color: white;
+  cursor: pointer;
+}
+
+input {
+  padding: 6px;
+  border-radius: 6px;
+  border: none;
+  width: 90px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th, td {
+  padding: 8px;
+  border-bottom: 1px solid #334155;
+}
+
+th { cursor: pointer; }
+
+tr:hover { background: #1e293b; }
+
+.ping-low { color: #22c55e; }
+.ping-mid { color: #eab308; }
+.ping-high { color: #ef4444; }
+
+.footer {
+  text-align: center;
+  font-size: 12px;
+  opacity: 0.7;
+  margin-top: 8px;
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+<h1>Players Online</h1>
+
+<div class="tabs">
+  <button class="tab active" onclick="setFilter('ALL', this)">All</button>
+  <button class="tab" onclick="setFilter('P', this)">Police</button>
+  <button class="tab" onclick="setFilter('R', this)">Border</button>
+  <button class="tab" onclick="setFilter('H', this)">Emergency</button>
+  <button class="tab" onclick="setFilter('E', this)">EMS</button>
+  <button class="tab" onclick="setFilter('G', this)">Mechanic</button>
+  <button class="tab" onclick="setFilter('ADMIN', this)">Admins</button>
+</div>
+
+<div class="controls">
+  <div id="counts">Players: 0</div>
+
+  <div style="display:flex; gap:6px; align-items:center;">
+    <input type="number" id="searchId" placeholder="Enter ID">
+    <button onclick="findById()">🔍 Find</button>
+  </div>
+
+  <button onclick="loadPlayers()">🔄 Refresh</button>
+</div>
+
+<div id="searchResult" style="margin-bottom:10px; font-size:13px;"></div>
+
+<table>
+<thead>
+<tr>
+  <th onclick="sortBy('id')">ID ⬍</th>
+  <th onclick="sortBy('name')">Name ⬍</th>
+  <th>Ping</th>
+</tr>
+</thead>
+<tbody id="players"></tbody>
+</table>
+
+<div class="footer">Auto refresh every 1 minute</div>
+</div>
+
+<script>
+let playersData = [];
+let currentSort = { key: null, asc: true };
+let currentFilter = "ALL";
+let lastHash = "";
+
+const jobRegex = {
+  P: /P-\d+/i,
+  R: /R-\d+/i,
+  H: /H-\d+/i,
+  E: /E-\d+/i,
+  G: /G-\d+/i,
+  ADMIN: /[MFAS]-\d+/i
+};
+
+async function loadPlayers() {
+  const res = await fetch("/api/players");
+  const data = await res.json();
+
+  const hash = JSON.stringify(data.map(p => [p.id, p.name, p.ping]));
+  if (hash === lastHash) return;
+
+  lastHash = hash;
+  playersData = data;
+  applyFilterAndSort();
+}
+
+function setFilter(filter, btn) {
+  currentFilter = filter;
+  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+  btn.classList.add("active");
+  applyFilterAndSort();
+}
+
+function sortBy(key) {
+  currentSort.asc = currentSort.key === key ? !currentSort.asc : true;
+  currentSort.key = key;
+  applyFilterAndSort();
+}
+
+function applyFilterAndSort() {
+  let data = [...playersData];
+
+  updateCounts(playersData);
+
+  if (currentFilter !== "ALL") {
+    data = data.filter(p => jobRegex[currentFilter]?.test(p.name));
+  }
+
+  if (currentSort.key === "id") {
+    data.sort((a, b) => currentSort.asc ? a.id - b.id : b.id - a.id);
+  }
+
+  if (currentSort.key === "name") {
+    data.sort((a, b) =>
+      currentSort.asc
+        ? a.name.localeCompare(b.name)
+        : b.name.localeCompare(a.name)
+    );
+  }
+
+  renderTable(data);
+}
+
+function updateCounts(data) {
+  const count = {
+    ALL: data.length,
+    P: data.filter(p => jobRegex.P.test(p.name)).length,
+    R: data.filter(p => jobRegex.R.test(p.name)).length,
+    H: data.filter(p => jobRegex.H.test(p.name)).length,
+    E: data.filter(p => jobRegex.E.test(p.name)).length,
+    G: data.filter(p => jobRegex.G.test(p.name)).length,
+    ADMIN: data.filter(p => jobRegex.ADMIN.test(p.name)).length
+  };
+
+  document.getElementById("counts").innerText =
+    `Players: ${count.ALL} | Police: ${count.P} | Border: ${count.R} | Emergency: ${count.H} | EMS: ${count.E} | Mechanic: ${count.G} | Admins: ${count.ADMIN}`;
+}
+
+function renderTable(players) {
+  const tbody = document.getElementById("players");
+
+  let html = "";
+  for (const p of players) {
+    const pingClass =
+      p.ping < 80 ? "ping-low" :
+      p.ping < 130 ? "ping-mid" :
+      "ping-high";
+
+    html += `
+      <tr>
+        <td>${p.id}</td>
+        <td>${p.name}</td>
+        <td class="${pingClass}">${p.ping}</td>
+      </tr>
+    `;
+  }
+
+  tbody.innerHTML = html;
+}
+
+function findById() {
+  const id = parseInt(document.getElementById("searchId").value);
+  const result = document.getElementById("searchResult");
+
+  if (isNaN(id)) {
+    result.innerHTML = "⚠️ Please enter a valid ID";
+    return;
+  }
+
+  const player = playersData.find(p => p.id === id);
+
+  if (player) {
+    result.innerHTML = `✅ <b>ID ${player.id}</b> → ${player.name}`;
+  } else {
+    result.innerHTML = `❌ No player found with ID ${id}`;
+  }
+}
+
+loadPlayers();
+setInterval(loadPlayers, 60000); // 1 minute
+</script>
+</body>
+</html>
