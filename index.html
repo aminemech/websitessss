@@ -3,90 +3,29 @@
 <head>
 <meta charset="UTF-8" />
 <title>Players Online</title>
-
 <style>
-body {
-  margin: 0;
-  font-family: Arial, sans-serif;
-  background: #0f172a;
-  color: #e5e7eb;
-}
-
-.container {
-  max-width: 1100px;
-  margin: 60px auto;
-  background: #020617;
-  padding: 30px;
-  border-radius: 16px;
-  box-shadow: 0 20px 50px rgba(0,0,0,0.5);
-}
-
-h1 {
-  text-align: center;
-  margin-bottom: 20px;
-}
-
-.controls {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 15px;
-}
-
-button {
-  background: #2563eb;
-  border: none;
-  color: white;
-  padding: 8px 14px;
-  border-radius: 8px;
-  cursor: pointer;
-}
-
-button:hover {
-  background: #1d4ed8;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-th, td {
-  padding: 10px;
-  border-bottom: 1px solid #1e293b;
-  text-align: left;
-}
-
-th {
-  color: #93c5fd;
-}
-
-.counts {
-  margin-bottom: 10px;
-  font-size: 14px;
-  color: #cbd5f5;
-}
-
-.footer {
-  margin-top: 10px;
-  font-size: 12px;
-  text-align: center;
-  color: #64748b;
-}
+body { margin:0; font-family:Arial,sans-serif; background:#0f172a; color:#e5e7eb; }
+.container { max-width:1100px; margin:60px auto; background:#020617; padding:30px; border-radius:16px; box-shadow:0 20px 50px rgba(0,0,0,0.5); }
+h1 { text-align:center; margin-bottom:20px; }
+.controls { display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; }
+button { background:#2563eb; border:none; color:white; padding:8px 14px; border-radius:8px; cursor:pointer; }
+button:hover { background:#1d4ed8; }
+table { width:100%; border-collapse:collapse; }
+th, td { padding:10px; border-bottom:1px solid #1e293b; text-align:left; }
+th { color:#93c5fd; }
+.counts { margin-bottom:10px; font-size:14px; color:#cbd5f5; }
+.footer { margin-top:10px; font-size:12px; text-align:center; color:#64748b; }
 </style>
 </head>
-
 <body>
 <div class="container">
   <h1>Players Online</h1>
-
   <div class="controls">
     <div class="counts" id="counts">
       Players: 0 | Police: 0 | Border: 0 | Emergency: 0 | EMS: 0 | Mechanic: 0 | Admins: 0
     </div>
     <button onclick="loadPlayers()">🔄 Refresh</button>
   </div>
-
   <table>
     <thead>
       <tr>
@@ -95,10 +34,8 @@ th {
         <th>Ping</th>
       </tr>
     </thead>
-    <tbody id="playerTable">
-    </tbody>
+    <tbody id="playerTable"></tbody>
   </table>
-
   <div class="footer">Auto refresh every 1 minute</div>
 </div>
 
@@ -111,7 +48,7 @@ async function loadPlayers() {
     const table = document.getElementById("playerTable");
     table.innerHTML = "";
 
-    let police = 0, border = 0, emergency = 0, ems = 0, mechanic = 0, admins = 0;
+    let police=0, border=0, emergency=0, ems=0, mechanic=0, admins=0;
 
     players.forEach(p => {
       const name = p.name || "";
@@ -124,11 +61,7 @@ async function loadPlayers() {
       if (/admin/i.test(name)) admins++;
 
       const row = document.createElement("tr");
-      row.innerHTML = `
-        <td>${p.id}</td>
-        <td>${name}</td>
-        <td>${p.ping}</td>
-      `;
+      row.innerHTML = `<td>${p.id}</td><td>${name}</td><td>${p.ping}</td>`;
       table.appendChild(row);
     });
 
@@ -136,7 +69,7 @@ async function loadPlayers() {
       `Players: ${players.length} | Police: ${police} | Border: ${border} | Emergency: ${emergency} | EMS: ${ems} | Mechanic: ${mechanic} | Admins: ${admins}`;
 
   } catch (e) {
-    console.error("Failed to load players");
+    console.error("Failed to load players", e);
   }
 }
 
